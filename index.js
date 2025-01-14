@@ -40,7 +40,7 @@ async function run() {
 
         // middleware functions
         const verifyToken = (req, res, next) => {
-            const bearerToken = req.headers.Authorization;
+            const bearerToken = req.headers.authorization;
             if (!bearerToken) {
                 return res.status(401).send({ message: 'unauthorized access' });
             }
@@ -52,6 +52,16 @@ async function run() {
                 req.decoded = decoded;
                 next();
             })
+        }
+
+        const verifyAdmin = async (req, res, next) => {
+            const userEmail = req.decoded.email;
+            const user = await userCollection.findOne({ email: userEmail })
+            const isAdmin = user?.role === 'admin';
+            if (!isAdmin) {
+                return res.status(403).send({ message: 'forbidden access' })
+            }
+            next();
         }
 
         // users apis
@@ -66,17 +76,43 @@ async function run() {
             res.send(result)
         })
 
-        app.get('/users', async (req, res) => {
+        app.get('/users', verifyToken, verifyAdmin, async (req, res) => {
             const result = await userCollection.find().toArray();
             res.send(result);
         })
+        // check isAdmin
+        app.get('/users/admin', verifyToken, async (req, res) => {
+            const email = req.query.email;
+            if (email !== req.decoded.email) {
+                return res.status(403).send({ message: 'forbidden access.' })
+            }
+            const user = await userCollection.findOne({ email: email });
+            let admin = false;
+            if (user) {
+                admin = user?.role === 'admin'
+            }
+            res.send({ admin });
+        })
+        // check isHost
+        app.get('/users/host', verifyToken, async (req, res) => {
+            const email = req.query.email;
+            if (email !== req.decoded.email) {
+                return res.status(403).send({ message: 'forbidden access.' })
+            }
+            const user = await userCollection.findOne({ email: email })
+            let host = false;
+            if (user) {
+                host = user?.role === 'host';
+            }
+            res.send({ host });
+        })
 
-        app.delete('/users', async (req, res) => {
+        app.delete('/users', verifyToken, verifyAdmin, async (req, res) => {
             const result = await userCollection.deleteOne({ _id: new ObjectId(req.query.id) })
             res.send(result)
         })
 
-        app.patch('/users', async (req, res) => {
+        app.patch('/users', verifyToken, verifyAdmin, async (req, res) => {
             const id = req.query.id;
             const role = req.body;
             const filter = { _id: new ObjectId(id) };
