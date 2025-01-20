@@ -29,6 +29,7 @@ async function run() {
         await client.connect();
 
         const userCollection = client.db('JunuDomicileDB').collection('users');
+        const propertyCollection = client.db('JunuDomicileDB').collection('properties');
 
 
         // jwt related apis
@@ -124,6 +125,23 @@ async function run() {
             const result = await userCollection.updateOne(filter, updatedDoc);
             res.send(result);
         })
+
+        // Property related apis
+        app.post('/properties', verifyToken, async (req, res) => {
+            const property = req.body;
+            const result = await propertyCollection.insertOne(property);
+            res.send(result);
+        })
+        app.get('/properties', async (req, res) => {
+            const email = req.params.email;
+            if (!email) {
+                const result = await propertyCollection.find().toArray();
+                return res.send(result);
+            }
+            const result = await propertyCollection.find({ ownerEmail: email }).toArray();
+            res.send(result)
+        })
+
 
 
         // Send a ping to confirm a successful connection
