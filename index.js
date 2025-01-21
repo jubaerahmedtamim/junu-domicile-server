@@ -133,7 +133,7 @@ async function run() {
             res.send(result);
         })
         app.get('/properties', async (req, res) => {
-            const email = req.params.email;
+            const email = req.query.email;
             if (!email) {
                 const result = await propertyCollection.find().toArray();
                 return res.send(result);
